@@ -3,11 +3,12 @@ package com.example.views;
 import com.vaadin.flow.component.HasElement;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
-import com.vaadin.flow.component.details.Details;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Pre;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 
@@ -33,46 +34,83 @@ public class MainLayout extends AppLayout {
 
     @Override
     public void showRouterLayoutContent(HasElement content) {
-        Details sourceDetails = createSourceDetails(content);
-        if (sourceDetails == null) {
-            super.showRouterLayoutContent(content);
+        super.showRouterLayoutContent(content);
+
+        String source = readSource(content);
+        if (source == null) {
             return;
         }
 
-        VerticalLayout wrapper = new VerticalLayout();
-        wrapper.setWidth("100%");
-        wrapper.getStyle().set("flex-grow", "1");
-        wrapper.setPadding(false);
-        var viewComponent = content.getElement().getComponent().orElseThrow();
-        wrapper.addAndExpand(viewComponent);
-        viewComponent.getElement().getStyle().remove("height");
-        wrapper.add(sourceDetails);
-        super.showRouterLayoutContent(wrapper);
+        String fileName = content.getClass().getSimpleName() + ".java";
+
+        Button sourceButton = new Button("View Source",
+                e -> showSourceDialog(fileName, source));
+        sourceButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE,
+                ButtonVariant.LUMO_SMALL);
+        sourceButton.getStyle()
+                .set("position", "absolute")
+                .set("right", "16px")
+                .set("top", "16px")
+                .set("z-index", "1");
+
+        content.getElement().getStyle().set("position", "relative");
+        content.getElement().appendChild(sourceButton.getElement());
     }
 
-    private Details createSourceDetails(HasElement content) {
+    private void showSourceDialog(String fileName, String source) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(fileName);
+        dialog.setWidth("min(90vw, 800px)");
+        dialog.setHeight("80vh");
+
+        Pre pre = new Pre(source);
+        pre.getStyle()
+                .set("font-family", "monospace")
+                .set("font-size", "var(--aura-font-size-s)")
+                .set("background", "#f5f5f5")
+                .set("padding", "16px")
+                .set("border-radius", "var(--aura-base-radius, 4px)")
+                .set("overflow", "auto")
+                .set("margin", "0")
+                .set("height", "100%")
+                .set("box-sizing", "border-box");
+
+        dialog.add(pre);
+        dialog.setCloseOnEsc(true);
+        Button closeButton = new Button(VaadinIcon.CLOSE_SMALL.create(),
+                e -> dialog.close());
+        closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getHeader().add(closeButton);
+        dialog.open();
+
+        // Scroll to #geolocation marker
+        int markerLine = findMarkerLine(source);
+        if (markerLine > 0) {
+            pre.getElement().executeJs(
+                    "setTimeout(() => { const lh = parseFloat(getComputedStyle(this).lineHeight) || 16;"
+                            + " this.scrollTop = ($0 - 3) * lh; }, 0)",
+                    markerLine);
+        }
+    }
+
+    private int findMarkerLine(String source) {
+        int line = 0;
+        for (String s : source.split("\n")) {
+            if (s.contains("// #geolocation")) {
+                return line;
+            }
+            line++;
+        }
+        return -1;
+    }
+
+    private String readSource(HasElement content) {
         Class<?> viewClass = content.getClass();
         String classFile = viewClass.getName().replace('.', '/') + ".java";
         Path sourcePath = Path.of("src/main/java", classFile);
 
         try {
-            String source = Files.readString(sourcePath);
-            Pre pre = new Pre(source);
-            pre.getStyle()
-                    .set("font-family", "var(--lumo-font-family-monospace, monospace)")
-                    .set("font-size", "var(--lumo-font-size-s)")
-                    .set("background", "var(--lumo-contrast-5pct)")
-                    .set("padding", "var(--lumo-space-m)")
-                    .set("border-radius", "var(--lumo-border-radius-m)")
-                    .set("overflow-x", "auto")
-                    .set("margin", "0");
-
-            Details details = new Details(
-                    "View Source: " + viewClass.getSimpleName() + ".java",
-                    pre);
-            details.setOpened(false);
-            details.getStyle().set("width", "100%");
-            return details;
+            return Files.readString(sourcePath);
         } catch (IOException e) {
             return null;
         }

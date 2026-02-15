@@ -81,7 +81,7 @@ public class TrackPositionView extends VerticalLayout {
         add(header, description, statusBadge, map, coords, errorDisplay);
         setPadding(true);
 
-        // Start tracking with high accuracy
+        // #geolocation
         GeolocationOptions options = new GeolocationOptions(true, null, null);
         Geolocation geo = Geolocation.track(this, options);
 

@@ -88,6 +88,7 @@ public class GetPositionView extends VerticalLayout {
                     timeoutField.getValue(),
                     maxAgeField.getValue());
 
+            // #geolocation
             Geolocation.get(opts, pos -> {
                 resultArea.removeAll();
                 resultArea.add(createPositionDetails(pos));
