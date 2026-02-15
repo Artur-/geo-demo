@@ -13,6 +13,8 @@ import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -107,12 +109,22 @@ public class MainLayout extends AppLayout {
     private String readSource(HasElement content) {
         Class<?> viewClass = content.getClass();
         String classFile = viewClass.getName().replace('.', '/') + ".java";
-        Path sourcePath = Path.of("src/main/java", classFile);
 
+        // Try filesystem first (dev mode)
         try {
-            return Files.readString(sourcePath);
-        } catch (IOException e) {
-            return null;
+            return Files.readString(Path.of("src/main/java", classFile));
+        } catch (IOException ignored) {
         }
+
+        // Fall back to classpath (production)
+        try (InputStream is = getClass().getClassLoader()
+                .getResourceAsStream("sources/" + classFile)) {
+            if (is != null) {
+                return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        } catch (IOException ignored) {
+        }
+
+        return null;
     }
 }
