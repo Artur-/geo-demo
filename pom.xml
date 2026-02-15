@@ -10,6 +10,7 @@
     <properties>
         <java.version>21</java.version>
         <vaadin.version>25.1-SNAPSHOT</vaadin.version>
+        <flow.version>25.1.geo-SNAPSHOT</flow.version>
     </properties>
     
     <parent>
@@ -20,6 +21,13 @@
     </parent>
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>com.vaadin</groupId>
+                <artifactId>flow-bom</artifactId>
+                <version>${flow.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>com.vaadin</groupId>
                 <artifactId>vaadin-bom</artifactId>
@@ -61,8 +69,8 @@
             </plugin>
             <plugin>
                 <groupId>com.vaadin</groupId>
-                <artifactId>vaadin-maven-plugin</artifactId>
-                <version>${vaadin.version}</version>
+                <artifactId>flow-maven-plugin</artifactId>
+                <version>${flow.version}</version>
                 <executions>
                     <execution>
                         <goals>
