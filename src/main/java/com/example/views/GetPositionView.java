@@ -43,7 +43,7 @@ public class GetPositionView extends VerticalLayout {
         Paragraph description = new Paragraph(
                 "Click the button to request your current position using "
                         + "Geolocation.get(). This makes a one-shot request "
-                        + "that returns a CompletableFuture.");
+                        + "with callbacks.");
 
         // Options
         Checkbox highAccuracy = new Checkbox("Enable high accuracy");
@@ -88,16 +88,15 @@ public class GetPositionView extends VerticalLayout {
                     timeoutField.getValue(),
                     maxAgeField.getValue());
 
-            Geolocation.get(opts).thenAccept(pos -> {
+            Geolocation.get(opts, pos -> {
                 resultArea.removeAll();
                 resultArea.add(createPositionDetails(pos));
                 updateMap(pos);
                 getButton.setEnabled(true);
-            }).exceptionally(ex -> {
+            }, errorMsg -> {
                 resultArea.removeAll();
-                resultArea.add(createErrorDisplay(ex.getMessage()));
+                resultArea.add(createErrorDisplay(errorMsg));
                 getButton.setEnabled(true);
-                return null;
             });
         });
 
