@@ -78,6 +78,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <commercialWithBanner>true</commercialWithBanner>
+                </configuration>
             </plugin>
         </plugins>
     </build>
