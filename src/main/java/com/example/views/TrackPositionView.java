@@ -1,5 +1,9 @@
 package com.example.views;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.geolocation.Geolocation;
 import com.vaadin.flow.component.geolocation.GeolocationCoordinates;
@@ -14,10 +18,12 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.map.Map;
 import com.vaadin.flow.component.map.configuration.Coordinate;
 import com.vaadin.flow.component.map.configuration.feature.MarkerFeature;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.local.ListSignal;
 
 /**
  * Demonstrates continuous position tracking using
@@ -29,8 +35,13 @@ import com.vaadin.flow.component.ComponentEffect;
 @PageTitle("Track Position")
 public class TrackPositionView extends VerticalLayout {
 
+    record LogEntry(String time, double latitude, double longitude,
+            double accuracy) {
+    }
+
     private int updateCount = 0;
     private MarkerFeature marker;
+    private final ListSignal<LogEntry> logEntries = new ListSignal<>();
 
     public TrackPositionView() {
         H2 header = new H2("Track Position");
@@ -70,6 +81,33 @@ public class TrackPositionView extends VerticalLayout {
         map.setWidthFull();
         map.setZoom(2);
 
+        // Coordinate log (most recent on top)
+        Div log = new Div();
+        log.getStyle()
+                .set("overflow-y", "auto")
+                .set("height", "400px")
+                .set("min-width", "260px")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-family", "monospace")
+                .set("padding", "var(--lumo-space-s)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "var(--lumo-border-radius-m)");
+
+        ComponentEffect.bindChildren(log, logEntries, entrySignal -> {
+            LogEntry e = entrySignal.get();
+            Span row = new Span(String.format("%s  %.4f, %.4f  \u00B1%.0fm",
+                    e.time(), e.latitude(), e.longitude(), e.accuracy()));
+            row.getStyle().set("white-space", "nowrap")
+                    .set("display", "block")
+                    .set("padding", "2px 0");
+            return row;
+        });
+
+        HorizontalLayout mapRow = new HorizontalLayout(map, log);
+        mapRow.setWidthFull();
+        mapRow.setFlexGrow(1, map);
+        mapRow.setFlexGrow(0, log);
+
         // Error display
         Div errorDisplay = new Div();
         errorDisplay.setVisible(false);
@@ -79,7 +117,7 @@ public class TrackPositionView extends VerticalLayout {
                 .set("background", "var(--lumo-error-color-10pct)")
                 .set("border-radius", "var(--lumo-border-radius-m)");
 
-        add(header, description, statusBadge, map, coords, errorDisplay);
+        add(header, description, statusBadge, mapRow, coords, errorDisplay);
         setPadding(true);
 
         // #geolocation
@@ -126,6 +164,14 @@ public class TrackPositionView extends VerticalLayout {
                     if (updateCount == 1) {
                         map.setZoom(15);
                     }
+
+                    // Add log entry (most recent on top)
+                    String time = DateTimeFormatter
+                            .ofPattern("HH:mm:ss")
+                            .withZone(ZoneId.systemDefault())
+                            .format(Instant.ofEpochMilli(pos.timestamp()));
+                    logEntries.insertFirst(new LogEntry(time,
+                            c.latitude(), c.longitude(), c.accuracy()));
 
                     statusBadge.setText("Tracking active (" + updateCount
                             + " updates)");
