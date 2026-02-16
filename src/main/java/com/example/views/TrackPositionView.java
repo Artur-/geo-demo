@@ -6,6 +6,7 @@ import com.vaadin.flow.component.geolocation.GeolocationCoordinates;
 import com.vaadin.flow.component.geolocation.GeolocationError;
 import com.vaadin.flow.component.geolocation.GeolocationOptions;
 import com.vaadin.flow.component.geolocation.GeolocationPosition;
+import com.vaadin.flow.component.geolocation.GeolocationState;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
@@ -21,8 +22,8 @@ import com.vaadin.flow.component.ComponentEffect;
 /**
  * Demonstrates continuous position tracking using
  * {@link Geolocation#track(com.vaadin.flow.component.Component)} with reactive
- * {@link com.vaadin.flow.signals.Signal}s. The map follows the user's position
- * in real time. Tracking stops automatically when navigating away.
+ * a reactive {@link GeolocationState} signal. The map follows the user's
+ * position in real time. Tracking stops automatically when navigating away.
  */
 @Route(value = "track", layout = MainLayout.class)
 @PageTitle("Track Position")
@@ -85,59 +86,66 @@ public class TrackPositionView extends VerticalLayout {
         GeolocationOptions options = new GeolocationOptions(true, null, null);
         Geolocation geo = Geolocation.track(this, options);
 
-        // Reactive effect: runs whenever geo.value() or geo.error() changes
+        // Reactive effect: runs whenever geo.state() changes
         ComponentEffect.effect(this, () -> {
-            GeolocationPosition pos = geo.value().get();
-            GeolocationError err = geo.error().get();
-
-            if (pos != null) {
-                GeolocationCoordinates c = pos.coords();
-                updateCount++;
-
-                latField.setText(String.format("%.6f\u00B0", c.latitude()));
-                lonField.setText(String.format("%.6f\u00B0", c.longitude()));
-                accField.setText(String.format("%.1f m", c.accuracy()));
-                altField.setText(c.altitude() != null
-                        ? String.format("%.1f m", c.altitude()) : "N/A");
-                headField.setText(c.heading() != null
-                        ? String.format("%.1f\u00B0", c.heading()) : "N/A");
-                speedField.setText(c.speed() != null
-                        ? String.format("%.2f m/s", c.speed()) : "N/A");
-                countField.setText(String.valueOf(updateCount));
-
-                // Update map
-                Coordinate coord = new Coordinate(
-                        c.longitude(), c.latitude());
-                if (marker != null) {
-                    map.getFeatureLayer().removeFeature(marker);
+            switch (geo.state().get()) {
+                case GeolocationState.Pending pending -> {
+                    // Still waiting for the first position
                 }
-                marker = new MarkerFeature(coord);
-                marker.setText("You are here");
-                map.getFeatureLayer().addFeature(marker);
-                map.setCenter(coord);
-                if (updateCount == 1) {
-                    map.setZoom(15);
+                case GeolocationPosition pos -> {
+                    GeolocationCoordinates c = pos.coords();
+                    updateCount++;
+
+                    latField.setText(
+                            String.format("%.6f\u00B0", c.latitude()));
+                    lonField.setText(
+                            String.format("%.6f\u00B0", c.longitude()));
+                    accField.setText(
+                            String.format("%.1f m", c.accuracy()));
+                    altField.setText(c.altitude() != null
+                            ? String.format("%.1f m", c.altitude())
+                            : "N/A");
+                    headField.setText(c.heading() != null
+                            ? String.format("%.1f\u00B0", c.heading())
+                            : "N/A");
+                    speedField.setText(c.speed() != null
+                            ? String.format("%.2f m/s", c.speed())
+                            : "N/A");
+                    countField.setText(String.valueOf(updateCount));
+
+                    // Update map
+                    Coordinate coord = new Coordinate(
+                            c.longitude(), c.latitude());
+                    if (marker != null) {
+                        map.getFeatureLayer().removeFeature(marker);
+                    }
+                    marker = new MarkerFeature(coord);
+                    marker.setText("You are here");
+                    map.getFeatureLayer().addFeature(marker);
+                    map.setCenter(coord);
+                    if (updateCount == 1) {
+                        map.setZoom(15);
+                    }
+
+                    statusBadge.setText("Tracking active (" + updateCount
+                            + " updates)");
+                    statusBadge.getElement().getThemeList().clear();
+                    statusBadge.getElement().getThemeList().add("badge");
+                    statusBadge.getElement().getThemeList().add("success");
+
+                    errorDisplay.setVisible(false);
                 }
-
-                statusBadge.setText("Tracking active (" + updateCount
-                        + " updates)");
-                statusBadge.getElement().getThemeList().clear();
-                statusBadge.getElement().getThemeList().add("badge");
-                statusBadge.getElement().getThemeList().add("success");
-            }
-
-            if (err != null) {
-                errorDisplay.setVisible(true);
-                errorDisplay.removeAll();
-                errorDisplay.add(new Span(
-                        errorCodeToString(err.code()) + ": "
-                                + err.message()));
-                statusBadge.setText("Error");
-                statusBadge.getElement().getThemeList().clear();
-                statusBadge.getElement().getThemeList().add("badge");
-                statusBadge.getElement().getThemeList().add("error");
-            } else {
-                errorDisplay.setVisible(false);
+                case GeolocationError err -> {
+                    errorDisplay.setVisible(true);
+                    errorDisplay.removeAll();
+                    errorDisplay.add(new Span(
+                            errorCodeToString(err.code()) + ": "
+                                    + err.message()));
+                    statusBadge.setText("Error");
+                    statusBadge.getElement().getThemeList().clear();
+                    statusBadge.getElement().getThemeList().add("badge");
+                    statusBadge.getElement().getThemeList().add("error");
+                }
             }
         });
     }

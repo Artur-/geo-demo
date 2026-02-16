@@ -11,6 +11,7 @@ import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.geolocation.Geolocation;
 import com.vaadin.flow.component.geolocation.GeolocationCoordinates;
+import com.vaadin.flow.component.geolocation.GeolocationError;
 import com.vaadin.flow.component.geolocation.GeolocationOptions;
 import com.vaadin.flow.component.geolocation.GeolocationPosition;
 import com.vaadin.flow.component.html.Div;
@@ -28,7 +29,7 @@ import com.vaadin.flow.router.Route;
 
 /**
  * Demonstrates one-shot position requests using
- * {@link Geolocation#get(GeolocationOptions)}.
+ * {@link Geolocation#get(GeolocationOptions, SerializableConsumer, SerializableConsumer)}.
  */
 @Route(value = "", layout = MainLayout.class)
 @PageTitle("Get Position")
@@ -94,9 +95,9 @@ public class GetPositionView extends VerticalLayout {
                 resultArea.add(createPositionDetails(pos));
                 updateMap(pos);
                 getButton.setEnabled(true);
-            }, errorMsg -> {
+            }, error -> {
                 resultArea.removeAll();
-                resultArea.add(createErrorDisplay(errorMsg));
+                resultArea.add(createErrorDisplay(error));
                 getButton.setEnabled(true);
             });
         });
@@ -165,14 +166,14 @@ public class GetPositionView extends VerticalLayout {
         return form;
     }
 
-    private Component createErrorDisplay(String message) {
+    private Component createErrorDisplay(GeolocationError error) {
         Div div = new Div();
         div.getStyle()
                 .set("color", "var(--lumo-error-text-color)")
                 .set("padding", "var(--lumo-space-m)")
                 .set("background", "var(--lumo-error-color-10pct)")
                 .set("border-radius", "var(--lumo-border-radius-m)");
-        div.add(new Span("Error: " + message));
+        div.add(new Span("Error: " + error.message()));
         return div;
     }
 }
